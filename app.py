@@ -109,50 +109,59 @@ def tobs():
     return jsonify(lst)
 
 @app.route("/api/v1.0/<start>")
-def start(date):
+def start_date(start):
     # calculate TMIN, TAVG, and TMAX for all dates greater than and equal to the start date.
     print("Server received request for '/api/v1.0/<start>' page...")
     
     # Query
     session = Session(engine)
-    results = session.query(measurement.date, func.avg(measurement.tobs), func.max(measurement.tobs), \
-    func.min(measurement.tobs)).filter(measurement.date >= date).all()
+    results = session.query(measurement.date, func.min(measurement.tobs), func.max(measurement.tobs), \
+    func.avg(measurement.tobs)).filter(measurement.date >= start).group_by(measurement.date).all()
+
+    # close the session to end the communication with the database
+    session.close()
 
     # Create JSON
     lst = []
-    for result in results:
+    for date, min, max, avg in results:
         start_dict = {}
         start_dict['Start Date'] = date
-        start_dict['Min. Temp.'] = result[3]
-        start_dict['Max. Temp.'] = result[2]
-        start_dict['Avg. Temp.'] = float(result[1])
+        start_dict['Min. Temp.'] = min
+        start_dict['Max. Temp.'] = max
+        start_dict['Avg. Temp.'] = round(avg, 1)
         lst.append(start_dict)
 
-        return jsonify(lst)
+    print(lst[:5])
+
+    return jsonify(lst)
 
 @app.route("/api/v1.0/<start>/<end>")
-def start_end(s_date, e_date):
+def start_end_date(start, end):
     # When given the start and the end date, calculate the TMIN, TAVG, 
     # and TMAX for dates between the start and end date inclusive.
     print("Server received request for '/api/v1.0/<start>/<end>' page...")
     
     # Query
     session = Session(engine)
-    results = session.query(measurement.date, func.avg(measurement.tobs), func.max(measurement.tobs), \
-    func.min(measurement.tobs)).filter(measurement.date >= s_date, measurement.date < e_date).all()
+    results = session.query(measurement.date, func.min(measurement.tobs), func.max(measurement.tobs),\
+    func.avg(measurement.tobs)).filter(measurement.date >= start, measurement.date <= end).group_by(measurement.date).all()
+
+
+
+    # close the session to end the communication with the database
+    session.close()
 
     # Create JSON
     lst = []
-    for result in results:
+    for date, min, max, avg in results:
         s_e_dict = {}
-        s_e_dict['Start Date'] = s_date
-        s_e_dict['End Date'] = e_date
-        s_e_dict['Min. Temp.'] = result[3]
-        s_e_dict['Max. Temp.'] = result[2]
-        s_e_dict['Avg. Temp.'] = float(result[1])
+        s_e_dict['Date'] = date
+        s_e_dict['Min. Temp.'] = min
+        s_e_dict['Max. Temp.'] = max
+        s_e_dict['Avg. Temp.'] = round(avg, 1)
         lst.append(s_e_dict)
-
-        return jsonify(lst)
+    return jsonify(lst)
+    
 
 # Run application
 if __name__ == "__main__":
